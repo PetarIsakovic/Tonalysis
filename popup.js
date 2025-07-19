@@ -578,14 +578,15 @@ VoiceTranscriber.prototype.addTranscription = function(text) {
 };
 
 chrome.storage.local.get(['last_transcription', 'last_updated'], (result) => {
-  const text = result.last_transcription || '';
+  const text = result.last_transcription?.trim();
   const updated = result.last_updated || 0;
 
   const minutesAgo = (Date.now() - updated) / 60000;
   const context = document.getElementById('context')?.value || 'professional';
 
-  if (text && text.trim() && minutesAgo < 2) {
-    // Only trigger if transcript is fresh (within 2 minutes)
+  // Only show tips if recording happened very recently and has enough content
+  if (text && text.length > 10 && minutesAgo < 2) {
     requestQuickTipsFeedback(text, context);
   }
 });
+

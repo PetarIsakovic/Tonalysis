@@ -12,6 +12,12 @@
   "host_permissions": [
     "<all_urls>"
   ],
+  "icons": {
+    "16": "mic.png",
+    "32": "mic.png",
+    "48": "mic.png",
+    "128": "mic.png"
+  },
   "action": {
     "default_popup": "popup.html",
     "default_title": "Voice Transcriber"
