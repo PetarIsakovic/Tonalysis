@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Voice Transcriber</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <div class="container">
@@ -42,7 +42,26 @@
         <p class="placeholder">Your transcribed text will appear here...</p>
       </div>
     </div>
-    
+
+    <!-- 🔥 Feedback Section -->
+    <div class="feedback-section">
+      <h3>AI Speech Feedback</h3>
+      
+      <label for="context">Select Meeting Context:</label>
+      <select id="context" class="context-select">
+        <option value="professional">Professional Meeting</option>
+        <option value="club">Club Meeting</option>
+        <option value="casual">Casual Conversation</option>
+      </select>
+
+      <button id="getFeedback" class="btn btn-small" style="margin-top: 10px;">Get Feedback</button>
+
+      <div id="feedback" class="feedback-output" style="white-space: pre-wrap; margin-top: 10px;">
+        <!-- AI feedback will appear here -->
+      </div>
+    </div>
+
+    <!-- ⚙️ Settings -->
     <div class="settings">
       <details class="settings-panel">
         <summary>Settings</summary>
@@ -63,13 +82,13 @@
         </div>
         <div class="setting-group">
           <label>
-            <input type="checkbox" id="continuousMode"> 
+            <input type="checkbox" id="continuousMode" /> 
             Continuous mode
           </label>
         </div>
         <div class="setting-group">
           <label>
-            <input type="checkbox" id="punctuationMode" checked> 
+            <input type="checkbox" id="punctuationMode" checked /> 
             Auto punctuation
           </label>
         </div>
@@ -83,4 +102,4 @@
   
   <script src="popup.js"></script>
 </body>
-</html> 
+</html>

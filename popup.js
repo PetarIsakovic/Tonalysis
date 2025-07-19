@@ -360,4 +360,28 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     });
     return true;
   }
-}); 
+
+// 🔥 Handle Gemini Feedback
+const getFeedbackBtn = document.getElementById('getFeedback');
+if (getFeedbackBtn) {
+  getFeedbackBtn.addEventListener('click', () => {
+    const context = document.getElementById('context').value;
+
+    chrome.storage.local.get(['last_transcription'], (result) => {
+      const text = result.last_transcription || '';
+
+      if (!text.trim()) {
+        document.getElementById('feedback').innerText = 'No transcription available.';
+        return;
+      }
+
+      chrome.runtime.sendMessage(
+        { action: 'getGeminiFeedback', text, context },
+        (response) => {
+          document.getElementById('feedback').innerText = response.feedback || 'No feedback returned.';
+        }
+      );
+    });
+  });
+}
+});

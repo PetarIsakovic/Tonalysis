@@ -55,6 +55,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       sendResponse({ success: true });
       break;
       
+    case 'getGeminiFeedback':
+      getGeminiFeedback(request.text, request.context).then(sendResponse);
+      return true;
+
     default:
       console.log('Unknown action:', request.action);
       sendResponse({ error: 'Unknown action' });
@@ -146,6 +150,51 @@ function updateBadge(text, tabId) {
   }
 }
 
+async function getGeminiFeedback(text, context) {
+  const { apiKey } = await chrome.storage.local.get(['apiKey']);
+
+  if (!apiKey) {
+    return { feedback: '❌ No Gemini API key found. Please set it in the options.' };
+  }
+
+  const prompt = ` 
+  You are an expert communication coach. Analyze the following transcript from a ${context}.
+
+  1. Summarize the main points.
+  2. Evaluate the tone, clarity, and pacing.
+  3. Identify filler words, repetition, and structure issues.
+  4. Suggest specific improvements for this context.
+  5. Rate overall communication effectiveness (1–10) and explain.
+
+  Transcript:
+  """
+  ${text}
+  """`;
+
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }]
+        })
+      }
+    );
+
+    const data = await response.json();
+
+    const feedback =
+      data?.candidates?.[0]?.content?.parts?.[0]?.text ||
+      '⚠️ Gemini returned no feedback.';
+
+    return { feedback };
+  } catch (error) {
+    console.error('Gemini API error:', error);
+    return { feedback: `❌ Error contacting Gemini: ${error.message}` };
+  }
+}
 // Note: Periodic cleanup removed to avoid requiring alarms permission
 
 async function cleanupOldData() {

@@ -3,6 +3,7 @@
   "name": "Voice Transcriber",
   "version": "1.0",
   "description": "Transcribe audio from microphone or web pages in real-time",
+  "options_page": "options.html",
   "permissions": [
     "activeTab",
     "storage",
