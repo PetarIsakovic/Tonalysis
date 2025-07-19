@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Voice Transcriber</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🎤 Voice Transcriber</h1>
+      <p class="subtitle">Real-time audio transcription</p>
+    </div>
+    
+    <div class="controls">
+      <button id="startBtn" class="btn btn-start">
+        <span class="btn-icon">🎙️</span>
+        Start Recording
+      </button>
+      <button id="stopBtn" class="btn btn-stop" disabled>
+        <span class="btn-icon">⏹️</span>
+        Stop Recording
+      </button>
+    </div>
+    
+    <div class="status">
+      <span id="statusText">Ready to transcribe</span>
+      <div id="statusIndicator" class="status-indicator"></div>
+    </div>
+    
+    <div class="transcription-container">
+      <div class="transcription-header">
+        <h3>Transcription</h3>
+        <div class="transcription-actions">
+          <button id="clearBtn" class="btn btn-small">Clear</button>
+          <button id="copyBtn" class="btn btn-small">Copy</button>
+          <button id="saveBtn" class="btn btn-small">Save</button>
+        </div>
+      </div>
+      <div id="transcriptionOutput" class="transcription-output">
+        <p class="placeholder">Your transcribed text will appear here...</p>
+      </div>
+    </div>
+    
+    <div class="settings">
+      <details class="settings-panel">
+        <summary>Settings</summary>
+        <div class="setting-group">
+          <label for="languageSelect">Language:</label>
+          <select id="languageSelect">
+            <option value="en-US">English (US)</option>
+            <option value="en-GB">English (UK)</option>
+            <option value="es-ES">Spanish</option>
+            <option value="fr-FR">French</option>
+            <option value="de-DE">German</option>
+            <option value="it-IT">Italian</option>
+            <option value="pt-BR">Portuguese (Brazil)</option>
+            <option value="zh-CN">Chinese (Simplified)</option>
+            <option value="ja-JP">Japanese</option>
+            <option value="ko-KR">Korean</option>
+          </select>
+        </div>
+        <div class="setting-group">
+          <label>
+            <input type="checkbox" id="continuousMode"> 
+            Continuous mode
+          </label>
+        </div>
+        <div class="setting-group">
+          <label>
+            <input type="checkbox" id="punctuationMode" checked> 
+            Auto punctuation
+          </label>
+        </div>
+      </details>
+    </div>
+    
+    <div class="footer">
+      <p class="version">v1.0</p>
+    </div>
+  </div>
+  
+  <script src="popup.js"></script>
+</body>
+</html> 

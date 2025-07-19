@@ -1,0 +1,363 @@
+class VoiceTranscriber {
+  constructor() {
+    this.recognition = null;
+    this.isRecording = false;
+    this.transcriptionText = '';
+    this.settings = {
+      language: 'en-US',
+      continuous: false,
+      punctuation: true
+    };
+    
+    this.initializeElements();
+    this.loadSettings();
+    this.setupEventListeners();
+    this.initializeSpeechRecognition();
+  }
+
+  initializeElements() {
+    try {
+      this.startBtn = document.getElementById('startBtn');
+      this.stopBtn = document.getElementById('stopBtn');
+      this.statusText = document.getElementById('statusText');
+      this.statusIndicator = document.getElementById('statusIndicator');
+      this.transcriptionOutput = document.getElementById('transcriptionOutput');
+      this.clearBtn = document.getElementById('clearBtn');
+      this.copyBtn = document.getElementById('copyBtn');
+      this.saveBtn = document.getElementById('saveBtn');
+      this.languageSelect = document.getElementById('languageSelect');
+      this.continuousMode = document.getElementById('continuousMode');
+      this.punctuationMode = document.getElementById('punctuationMode');
+    } catch (error) {
+      console.error('Error initializing elements:', error);
+    }
+  }
+
+  loadSettings() {
+    chrome.storage.sync.get(['transcriber_settings'], (result) => {
+      if (result.transcriber_settings) {
+        this.settings = { ...this.settings, ...result.transcriber_settings };
+        this.updateUI();
+      }
+    });
+  }
+
+  updateUI() {
+    if (this.languageSelect) {
+      this.languageSelect.value = this.settings.language;
+    }
+    if (this.continuousMode) {
+      this.continuousMode.checked = this.settings.continuous;
+    }
+    if (this.punctuationMode) {
+      this.punctuationMode.checked = this.settings.punctuation;
+    }
+  }
+
+  saveSettings() {
+    chrome.storage.sync.set({ transcriber_settings: this.settings });
+  }
+
+  setupEventListeners() {
+    if (this.startBtn) {
+      this.startBtn.addEventListener('click', () => this.startRecording());
+    }
+    if (this.stopBtn) {
+      this.stopBtn.addEventListener('click', () => this.stopRecording());
+    }
+    if (this.clearBtn) {
+      this.clearBtn.addEventListener('click', () => this.clearTranscription());
+    }
+    if (this.copyBtn) {
+      this.copyBtn.addEventListener('click', () => this.copyToClipboard());
+    }
+    if (this.saveBtn) {
+      this.saveBtn.addEventListener('click', () => this.saveTranscription());
+    }
+    
+    if (this.languageSelect) {
+      this.languageSelect.addEventListener('change', (e) => {
+        this.settings.language = e.target.value;
+        this.saveSettings();
+        if (this.recognition) {
+          this.recognition.lang = this.settings.language;
+        }
+      });
+    }
+    
+    if (this.continuousMode) {
+      this.continuousMode.addEventListener('change', (e) => {
+        this.settings.continuous = e.target.checked;
+        this.saveSettings();
+        if (this.recognition) {
+          this.recognition.continuous = this.settings.continuous;
+        }
+      });
+    }
+    
+    if (this.punctuationMode) {
+      this.punctuationMode.addEventListener('change', (e) => {
+        this.settings.punctuation = e.target.checked;
+        this.saveSettings();
+      });
+    }
+  }
+
+  initializeSpeechRecognition() {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      this.showError('Speech recognition not supported in this browser');
+      this.startBtn.disabled = true;
+      return;
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    this.recognition = new SpeechRecognition();
+    
+    this.recognition.continuous = this.settings.continuous;
+    this.recognition.interimResults = true;
+    this.recognition.lang = this.settings.language;
+    this.recognition.maxAlternatives = 1;
+
+    this.recognition.onstart = () => {
+      this.isRecording = true;
+      this.updateStatus('Recording...', 'recording');
+      this.startBtn.disabled = true;
+      this.stopBtn.disabled = false;
+    };
+
+    this.recognition.onresult = (event) => {
+      let interimTranscript = '';
+      let finalTranscript = '';
+
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript;
+        } else {
+          interimTranscript += transcript;
+        }
+      }
+
+      if (finalTranscript) {
+        this.addTranscription(finalTranscript);
+      }
+
+      this.updateTranscriptionDisplay(interimTranscript);
+    };
+
+    this.recognition.onerror = (event) => {
+      console.error('Speech recognition error:', event.error);
+      
+      switch(event.error) {
+        case 'no-speech':
+          this.showError('No speech was detected. Please try again.');
+          break;
+        case 'audio-capture':
+          this.showError('Audio capture failed. Please check your microphone.');
+          break;
+        case 'not-allowed':
+          this.showError('Microphone access denied. Please allow microphone access.');
+          break;
+        case 'network':
+          this.showError('Network error occurred. Please check your connection.');
+          break;
+        default:
+          this.showError(`Speech recognition error: ${event.error}`);
+      }
+      
+      this.stopRecording();
+    };
+
+    this.recognition.onend = () => {
+      this.isRecording = false;
+      this.updateStatus('Ready to transcribe', 'ready');
+      this.startBtn.disabled = false;
+      this.stopBtn.disabled = true;
+      
+      if (this.settings.continuous && this.shouldContinueRecording) {
+        setTimeout(() => {
+          if (this.shouldContinueRecording) {
+            this.startRecording();
+          }
+        }, 100);
+      }
+    };
+  }
+
+  async startRecording() {
+    try {
+      // Request microphone permission
+      await navigator.mediaDevices.getUserMedia({ audio: true });
+      
+      this.shouldContinueRecording = this.settings.continuous;
+      this.recognition.start();
+    } catch (error) {
+      console.error('Error accessing microphone:', error);
+      this.showError('Failed to access microphone. Please check permissions.');
+    }
+  }
+
+  stopRecording() {
+    if (this.recognition && this.isRecording) {
+      this.shouldContinueRecording = false;
+      this.recognition.stop();
+    }
+  }
+
+  addTranscription(text) {
+    if (!text.trim()) return;
+    
+    // Process text based on punctuation settings
+    let processedText = text.trim();
+    if (this.settings.punctuation) {
+      processedText = this.addAutoPunctuation(processedText);
+    }
+    
+    this.transcriptionText += (this.transcriptionText ? ' ' : '') + processedText;
+    this.updateTranscriptionDisplay();
+    
+    // Save to storage
+    this.saveToStorage();
+  }
+
+  addAutoPunctuation(text) {
+    // Simple auto-punctuation logic
+    text = text.charAt(0).toUpperCase() + text.slice(1);
+    
+    // Add period if doesn't end with punctuation
+    if (!/[.!?]$/.test(text)) {
+      text += '.';
+    }
+    
+    return text;
+  }
+
+  updateTranscriptionDisplay(interimText = '') {
+    const output = this.transcriptionOutput;
+    
+    if (!this.transcriptionText && !interimText) {
+      output.innerHTML = '<p class="placeholder">Your transcribed text will appear here...</p>';
+      return;
+    }
+    
+    let html = '';
+    
+    if (this.transcriptionText) {
+      html += `<div class="transcription-text">${this.escapeHtml(this.transcriptionText)}</div>`;
+    }
+    
+    if (interimText) {
+      html += `<div class="interim-text">${this.escapeHtml(interimText)}</div>`;
+    }
+    
+    output.innerHTML = html;
+    output.scrollTop = output.scrollHeight;
+  }
+
+  clearTranscription() {
+    this.transcriptionText = '';
+    this.updateTranscriptionDisplay();
+    this.saveToStorage();
+  }
+
+  async copyToClipboard() {
+    if (!this.transcriptionText) {
+      this.showError('No text to copy');
+      return;
+    }
+    
+    try {
+      await navigator.clipboard.writeText(this.transcriptionText);
+      this.showSuccess('Text copied to clipboard');
+    } catch (error) {
+      console.error('Failed to copy text:', error);
+      this.showError('Failed to copy text');
+    }
+  }
+
+  saveTranscription() {
+    if (!this.transcriptionText) {
+      this.showError('No text to save');
+      return;
+    }
+    
+    const blob = new Blob([this.transcriptionText], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `transcription_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+    
+    this.showSuccess('Transcription saved');
+  }
+
+  saveToStorage() {
+    chrome.storage.local.set({
+      last_transcription: this.transcriptionText,
+      last_updated: Date.now()
+    });
+  }
+
+  loadFromStorage() {
+    chrome.storage.local.get(['last_transcription'], (result) => {
+      if (result.last_transcription) {
+        this.transcriptionText = result.last_transcription;
+        this.updateTranscriptionDisplay();
+      }
+    });
+  }
+
+  updateStatus(text, className = '') {
+    this.statusText.textContent = text;
+    this.statusIndicator.className = `status-indicator ${className}`;
+  }
+
+  showError(message) {
+    this.updateStatus(message, 'error');
+    setTimeout(() => {
+      if (!this.isRecording) {
+        this.updateStatus('Ready to transcribe', 'ready');
+      }
+    }, 3000);
+  }
+
+  showSuccess(message) {
+    this.updateStatus(message, 'success');
+    setTimeout(() => {
+      if (!this.isRecording) {
+        this.updateStatus('Ready to transcribe', 'ready');
+      }
+    }, 2000);
+  }
+
+  escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+}
+
+// Initialize the transcriber when popup loads
+document.addEventListener('DOMContentLoaded', () => {
+  const transcriber = new VoiceTranscriber();
+  
+  // Load any previous transcription
+  transcriber.loadFromStorage();
+  
+  // Handle popup closing/opening
+  window.addEventListener('beforeunload', () => {
+    transcriber.saveToStorage();
+  });
+});
+
+// Add some utility functions for extension communication
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === 'getTranscription') {
+    chrome.storage.local.get(['last_transcription'], (result) => {
+      sendResponse({ transcription: result.last_transcription || '' });
+    });
+    return true;
+  }
+}); 
