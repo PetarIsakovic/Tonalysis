@@ -154,26 +154,26 @@ async function getGeminiFeedback(text, context) {
   const { apiKey } = await chrome.storage.local.get(['apiKey']);
 
   if (!apiKey) {
-    return { feedback: '❌ No Gemini API key found. Please set it in the options.' };
+    return { feedback: '❌ No API key found. Please set it in extension options.' };
   }
 
-  const prompt = ` 
-  You are an expert communication coach. Analyze the following transcript from a ${context}.
+  const prompt = `
+You are a communication coach. Analyze this transcript from a ${context} setting.
 
-  1. Summarize the main points.
-  2. Evaluate the tone, clarity, and pacing.
-  3. Identify filler words, repetition, and structure issues.
-  4. Suggest specific improvements for this context.
-  5. Rate overall communication effectiveness (1–10) and explain.
+- Summarize the message
+- Assess tone, clarity, pacing
+- Point out filler words and structure issues
+- Suggest improvements
+- Give a communication score (1–10)
 
-  Transcript:
-  """
-  ${text}
-  """`;
+Transcript:
+"""
+${text}
+"""`;
 
   try {
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -182,20 +182,21 @@ async function getGeminiFeedback(text, context) {
         })
       }
     );
+    
 
     const data = await response.json();
+    console.log('Full Gemini API response:', data);
 
-    const feedback =
-      data?.candidates?.[0]?.content?.parts?.[0]?.text ||
-      '⚠️ Gemini returned no feedback.';
+    const feedback = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    return {
+      feedback: feedback || '⚠️ Gemini returned no feedback.\n\n(Raw: ' + JSON.stringify(data) + ')'
+    };
 
-    return { feedback };
   } catch (error) {
     console.error('Gemini API error:', error);
     return { feedback: `❌ Error contacting Gemini: ${error.message}` };
   }
 }
-// Note: Periodic cleanup removed to avoid requiring alarms permission
 
 async function cleanupOldData() {
   try {
