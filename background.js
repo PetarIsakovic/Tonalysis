@@ -9,7 +9,7 @@ chrome.runtime.onInstalled.addListener((details) => {
     chrome.storage.sync.set({
       transcriber_settings: {
         language: 'en-US',
-        continuous: false,
+        continuous: true,
         punctuation: true
       }
     });

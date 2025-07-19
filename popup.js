@@ -5,7 +5,7 @@ class VoiceTranscriber {
     this.transcriptionText = '';
     this.settings = {
       language: 'en-US',
-      continuous: false,
+      continuous: true,
       punctuation: true
     };
     
@@ -113,7 +113,7 @@ class VoiceTranscriber {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     this.recognition = new SpeechRecognition();
     
-    this.recognition.continuous = this.settings.continuous;
+    this.recognition.continuous = true;
     this.recognition.interimResults = true;
     this.recognition.lang = this.settings.language;
     this.recognition.maxAlternatives = 1;
@@ -170,17 +170,25 @@ class VoiceTranscriber {
     };
 
     this.recognition.onend = () => {
-      this.isRecording = false;
-      this.updateStatus('Ready to transcribe', 'ready');
-      this.startBtn.disabled = false;
-      this.stopBtn.disabled = true;
-      
-      if (this.settings.continuous && this.shouldContinueRecording) {
+      // Only stop if user manually stopped or there was an error
+      if (this.shouldContinueRecording && this.isRecording) {
+        // Automatically restart recognition to maintain continuous recording
         setTimeout(() => {
-          if (this.shouldContinueRecording) {
-            this.startRecording();
+          if (this.shouldContinueRecording && this.isRecording) {
+            try {
+              this.recognition.start();
+            } catch (error) {
+              console.log('Recognition restart failed:', error);
+              this.stopRecording();
+            }
           }
         }, 100);
+      } else {
+        // User manually stopped or error occurred
+        this.isRecording = false;
+        this.updateStatus('Ready to transcribe', 'ready');
+        this.startBtn.disabled = false;
+        this.stopBtn.disabled = true;
       }
     };
   }
@@ -190,7 +198,7 @@ class VoiceTranscriber {
       // Request microphone permission
       await navigator.mediaDevices.getUserMedia({ audio: true });
       
-      this.shouldContinueRecording = this.settings.continuous;
+      this.shouldContinueRecording = true; // Always continuous by default
       this.recognition.start();
     } catch (error) {
       console.error('Error accessing microphone:', error);
