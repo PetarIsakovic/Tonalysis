@@ -159,26 +159,18 @@ async function getGeminiFeedback(text, context, quickTips) {
 
   let prompt;
   if (quickTips) {
-    prompt = `You're a live communication coach. Based only on the transcript below, give 3–4 extremely brief, one-sentence suggestions for improvement. Each tip should be:
+    prompt = `You're a live communication coach. Based only on the transcript below, write 3–4 extremely brief, one-sentence suggestions to help the speaker improve. Each tip must:
 
-    - Be a single sentence
-
-    - Sound warm and supportive, not robotic
-
-    - Be clear and actionable, like: “Try starting with a confident greeting” or “Cut back on filler words”
-
-    - Stand on its own (no grouping or explanation)
-
-    - Do not include bullet points, numbers, or headings
-
-    - Output only the list of tips — nothing else
-
+    - Be a standalone sentence
+    - Be realistic and actionable, like: “Avoid filler words” or “Try starting with a stronger opening”
+    - Use a natural and friendly tone
+    - Be written as plain sentences with **no bullets, no numbers, no symbols, no headings**
+    - Return only the list of tips — nothing else
 
     Transcript:
     """
     ${text}
     """
-
     `;
   } else {
     prompt = `do nothing
