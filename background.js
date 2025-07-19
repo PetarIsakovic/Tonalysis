@@ -55,6 +55,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       sendResponse({ success: true });
       break;
       
+    case 'getGeminiFeedback':
+      getGeminiFeedback(request.text, request.context).then(sendResponse);
+      return true;
+
     default:
       console.log('Unknown action:', request.action);
       sendResponse({ error: 'Unknown action' });
@@ -146,7 +150,53 @@ function updateBadge(text, tabId) {
   }
 }
 
-// Note: Periodic cleanup removed to avoid requiring alarms permission
+async function getGeminiFeedback(text, context) {
+  const { apiKey } = await chrome.storage.local.get(['apiKey']);
+
+  if (!apiKey) {
+    return { feedback: '❌ No API key found. Please set it in extension options.' };
+  }
+
+  const prompt = `
+You are a communication coach. Analyze this transcript from a ${context} setting.
+
+- Summarize the message
+- Assess tone, clarity, pacing
+- Point out filler words and structure issues
+- Suggest improvements
+- Give a communication score (1–10)
+
+Transcript:
+"""
+${text}
+"""`;
+
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }]
+        })
+      }
+    );
+    
+
+    const data = await response.json();
+    console.log('Full Gemini API response:', data);
+
+    const feedback = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    return {
+      feedback: feedback || '⚠️ Gemini returned no feedback.\n\n(Raw: ' + JSON.stringify(data) + ')'
+    };
+
+  } catch (error) {
+    console.error('Gemini API error:', error);
+    return { feedback: `❌ Error contacting Gemini: ${error.message}` };
+  }
+}
 
 async function cleanupOldData() {
   try {

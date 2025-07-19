@@ -227,6 +227,10 @@ class VoiceTranscriber {
     
     // Save to storage
     this.saveToStorage();
+    chrome.storage.local.set({
+      last_transcription: this.transcriptionText,
+      last_updated: Date.now()
+    });
   }
 
   addAutoPunctuation(text) {
@@ -347,25 +351,88 @@ class VoiceTranscriber {
   }
 }
 
+
+function parseGeminiFeedback(rawText) {
+  const sections = {
+    summary: '',
+    strengths: '',
+    suggestions: '',
+    score: ''
+  };
+
+  const summaryMatch = rawText.match(/(?:Summary|Message|Overview)[:\n]+([\s\S]*?)(?=(Strengths|Suggestions|Score|$))/i);
+  const strengthsMatch = rawText.match(/(?:Strengths|Positives|Good)[:\n]+([\s\S]*?)(?=(Suggestions|Score|$))/i);
+  const suggestionsMatch = rawText.match(/(?:Suggestions|Improvements|To improve)[:\n]+([\s\S]*?)(?=(Score|$))/i);
+  const scoreMatch = rawText.match(/(?:Score|Communication score|Rating)[:\n ]+([0-9\.\/\- ]{1,6})/i);
+
+  if (summaryMatch) sections.summary = summaryMatch[1].trim();
+  if (strengthsMatch) sections.strengths = strengthsMatch[1].trim();
+  if (suggestionsMatch) sections.suggestions = suggestionsMatch[1].trim();
+  if (scoreMatch) sections.score = scoreMatch[1].trim();
+
+  if (!sections.summary && !sections.strengths && !sections.suggestions && !sections.score) {
+    sections.summary = rawText.trim();
+  }
+
+  return sections;
+}
+
+function renderFeedbackCard(sections) {
+  const feedbackCard = document.getElementById('feedbackCard');
+  feedbackCard.innerHTML = `
+    <div style="margin-bottom: 10px;">
+      <span style="font-size:1.1em; font-weight:600;">📋 Summary</span>
+      <div style="margin-top:3px; color:#333; white-space:pre-line;">${sections.summary || '<em>No summary provided.</em>'}</div>
+    </div>
+    <div style="margin-bottom: 10px;">
+      <span style="font-size:1.1em; font-weight:600;">✅ Strengths</span>
+      <div style="margin-top:3px; color:#2e7d32; white-space:pre-line;">${sections.strengths || '<em>No strengths detected.</em>'}</div>
+    </div>
+    <div style="margin-bottom: 10px;">
+      <span style="font-size:1.1em; font-weight:600;">🛠️ Suggestions</span>
+      <div style="margin-top:3px; color:#b26a00; white-space:pre-line;">${sections.suggestions || '<em>No suggestions provided.</em>'}</div>
+    </div>
+    <div>
+      <span style="font-size:1.1em; font-weight:600;">📈 Score</span>
+      <div style="margin-top:3px; color:#1976d2; font-size:1.2em;">${sections.score || '<em>No score.</em>'}</div>
+    </div>
+  `;
+}
+function animateFeedbackCard() {
+  const feedbackCard = document.getElementById('feedbackCard');
+  feedbackCard.style.display = 'block';
+  setTimeout(() => {
+    feedbackCard.style.opacity = '1';
+    feedbackCard.style.transform = 'translateY(0)';
+  }, 10);
+}
+
+
 // Initialize the transcriber when popup loads
 document.addEventListener('DOMContentLoaded', () => {
   const transcriber = new VoiceTranscriber();
-  
-  // Load any previous transcription
-  transcriber.loadFromStorage();
-  
-  // Handle popup closing/opening
-  window.addEventListener('beforeunload', () => {
-    transcriber.saveToStorage();
-  });
-});
 
-// Add some utility functions for extension communication
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === 'getTranscription') {
-    chrome.storage.local.get(['last_transcription'], (result) => {
-      sendResponse({ transcription: result.last_transcription || '' });
+  const getFeedbackBtn = document.getElementById('getFeedback');
+  if (getFeedbackBtn) {
+    getFeedbackBtn.addEventListener('click', () => {
+      const context = document.getElementById('context').value;
+
+      chrome.storage.local.get(['last_transcription'], (result) => {
+        const text = result.last_transcription || '';
+        if (!text.trim()) {
+          document.getElementById('feedback').innerText = 'No transcription available.';
+          return;
+        }
+
+        chrome.runtime.sendMessage(
+          { action: 'getGeminiFeedback', text, context },
+          (response) => {
+            const sections = parseGeminiFeedback(response.feedback);
+            renderFeedbackCard(sections);
+            animateFeedbackCard();
+          }
+        );
+      });
     });
-    return true;
   }
-}); 
+});

@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Voice Transcriber</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <div class="container">
@@ -42,7 +42,40 @@
         <p class="placeholder">Your transcribed text will appear here...</p>
       </div>
     </div>
+
+    <!-- Feedback Section (Refactored) -->
+  <div class="feedback-section" style="margin-top: 24px;">
+    <h3 style="margin-bottom: 10px;">AI Speech Feedback</h3>
     
+    <label for="context" style="font-weight: 500; margin-bottom: 4px; display: block;">Select Meeting Context:</label>
+    <select id="context" class="context-select" style="width: 100%; padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc; margin-bottom: 12px; font-size: 1em;">
+      <option value="professional">Professional Meeting</option>
+      <option value="club">Club Meeting</option>
+      <option value="casual">Casual Conversation</option>
+    </select>
+
+    <button id="getFeedback" class="btn btn-small" style="width: 100%; margin-bottom: 0.5em;">
+      <span id="feedbackBtnText">Get Feedback</span>
+      <span id="feedbackSpinner" style="display:none; margin-left: 8px; vertical-align: middle;">
+        <svg width="18" height="18" viewBox="0 0 38 38" xmlns="http://www.w3.org/2000/svg" stroke="#555">
+          <g fill="none" fill-rule="evenodd">
+            <g transform="translate(1 1)" stroke-width="3">
+              <circle stroke-opacity=".3" cx="18" cy="18" r="18"/>
+              <path d="M36 18c0-9.94-8.06-18-18-18">
+                <animateTransform attributeName="transform" type="rotate" from="0 18 18" to="360 18 18" dur="0.8s" repeatCount="indefinite"/>
+              </path>
+            </g>
+          </g>
+        </svg>
+      </span>
+    </button>
+
+    <div id="feedbackCard" class="feedback-output" style="display:none; background: #f8f9fa; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); padding: 16px 14px; margin-top: 14px; transition: all 0.4s cubic-bezier(.4,0,.2,1); opacity: 0; transform: translateY(16px);">
+      <!-- Feedback content will be injected here -->
+    </div>
+  </div>
+
+    <!-- ⚙️ Settings -->
     <div class="settings">
       <details class="settings-panel">
         <summary>Settings</summary>
@@ -69,7 +102,7 @@
         </div>
         <div class="setting-group">
           <label>
-            <input type="checkbox" id="punctuationMode" checked> 
+            <input type="checkbox" id="punctuationMode" checked /> 
             Auto punctuation
           </label>
         </div>
@@ -83,4 +116,4 @@
   
   <script src="popup.js"></script>
 </body>
-</html> 
+</html>
