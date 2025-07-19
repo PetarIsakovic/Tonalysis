@@ -56,7 +56,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       break;
       
     case 'getGeminiFeedback':
-      getGeminiFeedback(request.text, request.context).then(sendResponse);
+      getGeminiFeedback(request.text, request.context, request.quickTips).then(sendResponse);
       return true;
 
     default:
@@ -150,26 +150,33 @@ function updateBadge(text, tabId) {
   }
 }
 
-async function getGeminiFeedback(text, context) {
+async function getGeminiFeedback(text, context, quickTips) {
   const { apiKey } = await chrome.storage.local.get(['apiKey']);
 
   if (!apiKey) {
     return { feedback: '❌ No API key found. Please set it in extension options.' };
   }
 
-  const prompt = `
-You are a communication coach. Analyze this transcript from a ${context} setting.
+  let prompt;
+  if (quickTips) {
+    prompt = `You're a live communication coach. Based only on the transcript below, give 3–5 extremely brief, one-sentence suggestions for improvement. Each tip should be:
 
-- Summarize the message
-- Assess tone, clarity, pacing
-- Point out filler words and structure issues
-- Suggest improvements
-- Give a communication score (1–10)
+    - Standalone (no grouping or headings)
+    - Direct and actionable, like: “Avoid filler words”, “Say ‘I suggest’ instead of ‘Maybe we could’”
+    - No summaries, no explanations, no intro or outro
 
-Transcript:
-"""
-${text}
-"""`;
+    Only output the list of tips. Nothing else.
+
+    Transcript:
+    """
+    ${text}
+    """
+
+    `;
+  } else {
+    prompt = `do nothing
+    `;
+  }
 
   try {
     const response = await fetch(
@@ -183,7 +190,6 @@ ${text}
       }
     );
     
-
     const data = await response.json();
     console.log('Full Gemini API response:', data);
 

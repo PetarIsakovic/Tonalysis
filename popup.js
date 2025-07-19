@@ -377,27 +377,12 @@ function parseGeminiFeedback(rawText) {
   return sections;
 }
 
-function renderFeedbackCard(sections) {
+// Replace renderFeedbackCard to only show tips as a list
+function renderFeedbackCard(feedbackText) {
   const feedbackCard = document.getElementById('feedbackCard');
-  feedbackCard.innerHTML = `
-    <div style="margin-bottom: 10px;">
-      <span style="font-size:1.1em; font-weight:600;">📋 Summary</span>
-      <div style="margin-top:3px; color:#333; white-space:pre-line;">${sections.summary || '<em>No summary provided.</em>'}</div>
-    </div>
-    <div style="margin-bottom: 10px;">
-      <span style="font-size:1.1em; font-weight:600;">✅ Strengths</span>
-      <div style="margin-top:3px; color:#2e7d32; white-space:pre-line;">${sections.strengths || '<em>No strengths detected.</em>'}</div>
-    </div>
-    <div style="margin-bottom: 10px;">
-      <span style="font-size:1.1em; font-weight:600;">🛠️ Suggestions</span>
-      <div style="margin-top:3px; color:#b26a00; white-space:pre-line;">${sections.suggestions || '<em>No suggestions provided.</em>'}</div>
-    </div>
-    <div>
-      <span style="font-size:1.1em; font-weight:600;">📈 Score</span>
-      <div style="margin-top:3px; color:#1976d2; font-size:1.2em;">${sections.score || '<em>No score.</em>'}</div>
-    </div>
-  `;
+  if (feedbackCard) feedbackCard.style.display = 'none';
 }
+
 function animateFeedbackCard() {
   const feedbackCard = document.getElementById('feedbackCard');
   feedbackCard.style.display = 'block';
@@ -412,27 +397,170 @@ function animateFeedbackCard() {
 document.addEventListener('DOMContentLoaded', () => {
   const transcriber = new VoiceTranscriber();
 
+  // Remove Get Feedback button and its logic
   const getFeedbackBtn = document.getElementById('getFeedback');
   if (getFeedbackBtn) {
-    getFeedbackBtn.addEventListener('click', () => {
-      const context = document.getElementById('context').value;
+    getFeedbackBtn.remove();
+  }
+  const feedbackBtnText = document.getElementById('feedbackBtnText');
+  if (feedbackBtnText) feedbackBtnText.remove();
+  const feedbackSpinner = document.getElementById('feedbackSpinner');
+  if (feedbackSpinner) feedbackSpinner.remove();
 
+  // --- Real-time feedback logic ---
+  async function requestAndRenderGeminiFeedback(text, context) {
+    if (!text || !text.trim()) {
+      renderFeedbackCard('');
+      return;
+    }
+    chrome.runtime.sendMessage(
+      { action: 'getGeminiFeedback', text, context, quickTips: true },
+      (response) => {
+        renderFeedbackCard(response.feedback);
+        animateFeedbackCard();
+      }
+    );
+  }
+
+  // Hook into addTranscription for real-time feedback
+  const origAddTranscription = VoiceTranscriber.prototype.addTranscription;
+  VoiceTranscriber.prototype.addTranscription = function(text) {
+    origAddTranscription.call(this, text);
+  
+    const cleaned = text.trim();
+    if (!cleaned || cleaned.length < 3 || /^[.,!?-]+$/.test(cleaned)) return;
+  
+    const context = document.getElementById('context')?.value || 'professional';
+  
+    requestQuickTipsFeedback(this.transcriptionText, context).then(() => {
+      chrome.runtime.sendMessage(
+        {
+          action: 'getGeminiFeedback',
+          text: this.transcriptionText,
+          context,
+          quickTips: true
+        },
+        (response) => {
+          if (response && response.feedback) {
+            const tips = response.feedback
+              .split(/\n|\u2022|\-/)
+              .map(t => t.trim())
+              .filter(t => t && !/^suggestion/i.test(t) && !/^tips?/i.test(t));
+            
+            if (tips.length > 0) {
+              showPopupTip(`💬 Try saying: “${tips[0]}”`);
+            }
+          }
+        }
+      );
+    });
+  };
+  
+
+  // Also update feedback if context changes
+  const contextSelect = document.getElementById('context');
+  if (contextSelect) {
+    contextSelect.addEventListener('change', () => {
       chrome.storage.local.get(['last_transcription'], (result) => {
         const text = result.last_transcription || '';
-        if (!text.trim()) {
-          document.getElementById('feedback').innerText = 'No transcription available.';
-          return;
-        }
-
-        chrome.runtime.sendMessage(
-          { action: 'getGeminiFeedback', text, context },
-          (response) => {
-            const sections = parseGeminiFeedback(response.feedback);
-            renderFeedbackCard(sections);
-            animateFeedbackCard();
-          }
-        );
+        requestAndRenderGeminiFeedback(text, contextSelect.value);
       });
     });
+  }
+
+});
+
+// --- Real-time Quick Tips Feedback ---
+const quickTipsContainer = document.createElement('div');
+quickTipsContainer.id = 'quickTipsContainer';
+quickTipsContainer.style = 'margin-top: 10px; min-height: 32px; transition: opacity 0.4s cubic-bezier(.4,0,.2,1); opacity: 0;';
+
+const quickTipsSpinner = document.createElement('span');
+quickTipsSpinner.id = 'quickTipsSpinner';
+quickTipsSpinner.innerHTML = `<svg width="18" height="18" viewBox="0 0 38 38" xmlns="http://www.w3.org/2000/svg" stroke="#555"><g fill="none" fill-rule="evenodd"><g transform="translate(1 1)" stroke-width="3"><circle stroke-opacity=".3" cx="18" cy="18" r="18"/><path d="M36 18c0-9.94-8.06-18-18-18"><animateTransform attributeName="transform" type="rotate" from="0 18 18" to="360 18 18" dur="0.8s" repeatCount="indefinite"/></path></g></g></svg>`;
+quickTipsSpinner.style.display = 'none';
+quickTipsSpinner.style.verticalAlign = 'middle';
+quickTipsSpinner.style.marginRight = '8px';
+
+quickTipsContainer.appendChild(quickTipsSpinner);
+
+const feedbackSection = document.querySelector('.feedback-section');
+if (feedbackSection) {
+  feedbackSection.insertBefore(quickTipsContainer, feedbackSection.firstChild.nextSibling);
+}
+
+function showQuickTipsLoading(isLoading) {
+  quickTipsSpinner.style.display = isLoading ? '' : 'none';
+  quickTipsContainer.style.opacity = isLoading ? '1' : quickTipsContainer.innerHTML.trim() ? '1' : '0';
+}
+
+function fadeInQuickTips() {
+  quickTipsContainer.style.opacity = '1';
+}
+
+function renderQuickTips(tips) {
+  // Remove spinner if present
+  if (quickTipsContainer.contains(quickTipsSpinner)) quickTipsContainer.removeChild(quickTipsSpinner);
+  if (!tips || !tips.length) {
+    quickTipsContainer.innerHTML = '<div style="color:#888; font-size:0.98em;">No suggestions right now.</div>';
+    fadeInQuickTips();
+    return;
+  }
+  quickTipsContainer.innerHTML = `<div style="background:#f4f7fa; border-radius:8px; padding:10px 12px; box-shadow:0 1px 4px rgba(0,0,0,0.03); font-size:0.98em; color:#333;">
+    <div style="font-weight:600; margin-bottom:4px; letter-spacing:0.01em;">💡 Live Suggestions</div>
+    <ul style="margin:0; padding-left:18px;">
+      ${tips.map(tip => `<li style='margin-bottom:2px;'>${tip}</li>`).join('')}
+    </ul>
+  </div>`;
+  fadeInQuickTips();
+}
+
+async function requestQuickTipsFeedback(text, context) {
+  showQuickTipsLoading(true);
+  quickTipsContainer.innerHTML = '';
+  quickTipsContainer.appendChild(quickTipsSpinner);
+  quickTipsContainer.style.opacity = '1';
+  return new Promise((resolve) => {
+    chrome.runtime.sendMessage({
+      action: 'getGeminiFeedback',
+      text,
+      context,
+      quickTips: true // flag for short, live-style tips
+    }, (response) => {
+      showQuickTipsLoading(false);
+      let tips = [];
+      if (response && response.feedback) {
+        // Try to split feedback into tips (by line or bullet)
+        tips = response.feedback
+          .split(/\n|\u2022|\-/)
+          .map(t => t.trim())
+          .filter(t => t && !/^suggestion/i.test(t) && !/^tips?/i.test(t));
+      }
+      renderQuickTips(tips);
+      resolve();
+    });
+  });
+}
+
+// --- Hook into addTranscription for real-time feedback ---
+const origAddTranscription = VoiceTranscriber.prototype.addTranscription;
+VoiceTranscriber.prototype.addTranscription = function(text) {
+  origAddTranscription.call(this, text);
+  const context = document.getElementById('context')?.value || 'professional';
+  if (this.transcriptionText && this.transcriptionText.trim()) {
+    requestQuickTipsFeedback(this.transcriptionText, context);
+  }
+};
+
+chrome.storage.local.get(['last_transcription', 'last_updated'], (result) => {
+  const text = result.last_transcription || '';
+  const updated = result.last_updated || 0;
+
+  const minutesAgo = (Date.now() - updated) / 60000;
+  const context = document.getElementById('context')?.value || 'professional';
+
+  if (text && text.trim() && minutesAgo < 2) {
+    // Only trigger if transcript is fresh (within 2 minutes)
+    requestQuickTipsFeedback(text, context);
   }
 });
