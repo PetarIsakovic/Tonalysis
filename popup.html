@@ -43,16 +43,28 @@
       </div>
     </div>
 
-    <!-- Feedback Section (Refactored) -->
-  <div class="feedback-section" style="margin-top: 24px;">
-    <h3 style="margin-bottom: 10px;">AI Speech Feedback</h3>
-    
-    <label for="context" style="font-weight: 500; margin-bottom: 4px; display: block;">Select Meeting Context:</label>
-    <select id="context" class="context-select" style="width: 100%; padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc; margin-bottom: 12px; font-size: 1em;">
+   <!-- Feedback Section (Refactored) -->
+<div class="feedback-section" style="margin-top: 24px; text-align: center;">    
+  <div style="display: inline-block; max-width: 400px; width: 100%; margin-top: 16px;">
+    <label for="context" style="font-weight: 500; margin-bottom: 6px; display: block; text-align: center;">
+      Select Meeting Context:
+    </label>
+    <select id="context" class="context-select" 
+      style="
+        display: block;
+        margin: 0 auto 14px auto;
+        padding: 4px 8px;
+        border-radius: 6px;
+        border: 1px solid #ccc;
+        font-size: 0.95em;
+        width: 60%;
+        max-width: 240px;
+      ">
       <option value="professional">Professional Meeting</option>
       <option value="club">Club Meeting</option>
       <option value="casual">Casual Conversation</option>
     </select>
+
 
     <button id="getFeedback" class="btn btn-small" style="width: 100%; margin-bottom: 0.5em;">
       <span id="feedbackBtnText">Get Feedback</span>

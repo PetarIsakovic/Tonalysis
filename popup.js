@@ -446,10 +446,6 @@ document.addEventListener('DOMContentLoaded', () => {
               .split(/\n|\u2022|\-/)
               .map(t => t.trim())
               .filter(t => t && !/^suggestion/i.test(t) && !/^tips?/i.test(t));
-            
-            if (tips.length > 0) {
-              showPopupTip(`💬 Try saying: “${tips[0]}”`);
-            }
           }
         }
       );
@@ -497,23 +493,52 @@ function showQuickTipsLoading(isLoading) {
 function fadeInQuickTips() {
   quickTipsContainer.style.opacity = '1';
 }
-
 function renderQuickTips(tips) {
-  // Remove spinner if present
-  if (quickTipsContainer.contains(quickTipsSpinner)) quickTipsContainer.removeChild(quickTipsSpinner);
+  if (quickTipsContainer.contains(quickTipsSpinner)) {
+    quickTipsContainer.removeChild(quickTipsSpinner);
+  }
+
   if (!tips || !tips.length) {
-    quickTipsContainer.innerHTML = '<div style="color:#888; font-size:0.98em;">No suggestions right now.</div>';
+    quickTipsContainer.innerHTML = `
+      <div style="text-align:center; font-weight:600; margin-bottom:8px;">💡 AI Speech Feedback</div>
+      <div style="color:#888; font-size:0.98em;">No suggestions right now.</div>`;
     fadeInQuickTips();
     return;
   }
-  quickTipsContainer.innerHTML = `<div style="background:#f4f7fa; border-radius:8px; padding:10px 12px; box-shadow:0 1px 4px rgba(0,0,0,0.03); font-size:0.98em; color:#333;">
-    <div style="font-weight:600; margin-bottom:4px; letter-spacing:0.01em;">💡 Live Suggestions</div>
-    <ul style="margin:0; padding-left:18px;">
-      ${tips.map(tip => `<li style='margin-bottom:2px;'>${tip}</li>`).join('')}
-    </ul>
-  </div>`;
+
+  quickTipsContainer.innerHTML = `
+    <div style="text-align:center; font-weight:600; margin-bottom:14px;">💡 AI Speech Feedback</div>
+    <div style="
+      background: #f4f7fa;
+      border-radius: 10px;
+      padding: 14px 16px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+      font-size: 0.96em;
+      color: #333;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    ">
+      ${tips.map(tip => `
+        <div style="
+          background: #ffffff;
+          border-left: 4px solid #0077cc;
+          border-radius: 6px;
+          padding: 10px 12px;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+          display: flex;
+          align-items: flex-start;
+        ">
+          <span style="margin-right: 8px; font-weight: bold; color: #0077cc;">•</span>
+          <span style="flex: 1;">${tip}</span>
+        </div>
+      `).join('')}
+    </div>
+  `;
   fadeInQuickTips();
 }
+
+
 
 async function requestQuickTipsFeedback(text, context) {
   showQuickTipsLoading(true);
